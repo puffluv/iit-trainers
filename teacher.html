@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="iit.css?v=20261115b">
+<link rel="stylesheet" href="iit.css?v=20261115c">
 <style>
   section.card{margin-bottom:18px}
   .pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:12px 0 0}
@@ -30,6 +30,12 @@
   .myrooms button{border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font:inherit;font-size:14px;border-radius:999px;padding:5px 12px;cursor:pointer}
   .myrooms button:hover{border-color:var(--ink-dim)}
   .myrooms small{color:var(--ink-dim)}
+  .myrooms button.closed{opacity:.6}
+  .sel{width:100%;min-height:50px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:17px}
+  .countdown{font-size:22px;font-weight:600;margin:0 0 12px;font-variant-numeric:tabular-nums}
+  .countdown.warn,.s-left.warn{color:var(--no)}
+  .countdown.over,.s-left.over{color:var(--ink-dim)}
+  .s-left{font-size:clamp(28px,4.5vw,64px);font-weight:700;margin:10px 0 0;font-variant-numeric:tabular-nums}
 
   .conn{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
   .conn .field{flex:1 1 240px;margin:0}
@@ -92,32 +98,7 @@
   </header>
 
   <section class="card">
-    <h2>1. Комната для занятия</h2>
-    <p class="hint" style="margin:0">Выберите тренажёр и нажмите кнопку — QR-код откроется на весь экран. Студенты сканируют его и сразу попадают в зачётный проход этой комнаты.</p>
-    <div class="pick" id="pick"></div>
-    <div class="btn-row">
-      <button class="btn" id="mk-show" type="button">Создать комнату и показать QR</button>
-      <button class="btn ghost" id="mk" type="button">Только создать</button>
-    </div>
-    <p class="err" id="r-warn"></p>
-    <div id="room" class="roombox hidden">
-      <div>
-        <p class="kicker" id="r-title"></p>
-        <div class="bigcode" id="r-code"></div>
-        <label class="field"><span>Ссылка для студентов</span><input id="r-link" readonly></label>
-        <div class="btn-row" style="margin-top:0">
-          <button class="btn" id="r-full" type="button">Показать на весь экран</button>
-          <button class="btn ghost" id="r-copy" type="button">Скопировать ссылку</button>
-          <button class="btn ghost" id="r-watch" type="button">Смотреть результаты комнаты</button>
-        </div>
-      </div>
-      <canvas class="qr" id="r-qr" aria-label="QR-код ссылки на комнату"></canvas>
-    </div>
-    <div id="myrooms-wrap" class="hidden"><p class="hint" style="margin-top:16px">Комнаты, созданные в этом браузере (нажмите, чтобы снова показать QR):</p><div class="myrooms" id="myrooms"></div></div>
-  </section>
-
-  <section class="card">
-    <h2>2. Результаты</h2>
+    <h2>Вход в кабинет</h2>
     <div id="conn">
       <div class="conn">
         <label class="field"><span>Пароль кабинета (TEACHER_KEY из скрипта таблицы)</span><input id="c-key" type="password" autocomplete="current-password"></label>
@@ -134,6 +115,43 @@
       <button class="btn ghost hidden" id="logout" type="button" style="min-height:36px;padding:4px 14px;font-size:15px">Выйти</button>
     </div>
     <p class="err" id="c-err" role="alert"></p>
+  </section>
+
+  <section class="card">
+    <h2>1. Комната для занятия</h2>
+    <p class="hint" style="margin:0">Выберите тренажёр и длительность и нажмите кнопку — QR-код откроется на весь экран. Студенты сканируют его и сразу попадают в зачётный проход этой комнаты. Время отсчитывается с момента создания комнаты, у студентов идёт таймер; когда время выйдет, ответы отправятся сами.</p>
+    <div class="pick" id="pick"></div>
+    <label class="field" style="max-width:340px;margin:14px 0 0"><span>Длительность зачёта</span>
+      <select id="dur" class="sel">
+        <option value="10">10 минут</option><option value="15">15 минут</option><option value="20" selected>20 минут</option>
+        <option value="25">25 минут</option><option value="30">30 минут</option><option value="40">40 минут</option>
+        <option value="45">45 минут</option><option value="60">60 минут</option><option value="90">90 минут</option>
+      </select></label>
+    <div class="btn-row">
+      <button class="btn" id="mk-show" type="button">Создать комнату и показать QR</button>
+      <button class="btn ghost" id="mk" type="button">Только создать</button>
+    </div>
+    <p class="err" id="r-warn"></p>
+    <div id="room" class="roombox hidden">
+      <div>
+        <p class="kicker" id="r-title"></p>
+        <div class="bigcode" id="r-code"></div>
+        <p class="countdown" id="r-left"></p>
+        <label class="field"><span>Ссылка для студентов</span><input id="r-link" readonly></label>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn" id="r-full" type="button">Показать на весь экран</button>
+          <button class="btn ghost" id="r-ext" type="button">+5 минут</button>
+          <button class="btn ghost" id="r-copy" type="button">Скопировать ссылку</button>
+          <button class="btn ghost" id="r-watch" type="button">Смотреть результаты комнаты</button>
+        </div>
+      </div>
+      <canvas class="qr" id="r-qr" aria-label="QR-код ссылки на комнату"></canvas>
+    </div>
+    <div id="myrooms-wrap" class="hidden"><p class="hint" style="margin-top:16px">Ваши недавние комнаты (нажмите, чтобы снова показать QR):</p><div class="myrooms" id="myrooms"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>2. Результаты</h2>
 
 
     <div id="res" class="hidden">
@@ -165,7 +183,7 @@
       <li>Создайте Google Таблицу, например «Результаты тренажёров ИИТ».</li>
       <li>В таблице: <b>Расширения → Apps Script</b>. В файл <code>Code.gs</code> вставьте код сервера: <button class="btn ghost" id="copy-gs" type="button" style="min-height:36px;padding:4px 14px;font-size:15px">Скопировать код сервера</button></li>
       <li>Нажмите <b>«+» → «Скрипт»</b>, назовите файл <code>Bank</code> и вставьте содержимое приватного файла <code>private/Bank.gs</code> из папки проекта на вашем компьютере. В нём зачётные задания с ответами — на сайте его нет.</li>
-      <li>В начале <code>Code.gs</code> замените <code>ЗАМЕНИТЕ-НА-СВОЙ-ПАРОЛЬ</code> на свой пароль. Там же можно изменить <code>MAX_ATTEMPTS</code> (попыток на студента в комнате) и <code>TIME_LIMIT_MIN</code> (минут на проход).</li>
+      <li>В начале <code>Code.gs</code> замените <code>ЗАМЕНИТЕ-НА-СВОЙ-ПАРОЛЬ</code> на свой пароль. Там же можно изменить <code>MAX_ATTEMPTS</code> (попыток на студента в комнате) и <code>LECTURE_ITEMS</code> (заданий в зачёте по лекции).</li>
       <li>Нажмите «Сохранить», затем <b>Развернуть → Новое развёртывание</b>, тип — «Веб-приложение»; «Запуск от имени» — <b>Я</b>, «У кого есть доступ» — <b>Все</b>. При обновлении кода — <b>Управление развёртываниями → ✎ → Новая версия</b>.</li>
       <li>Адрес веб-приложения (заканчивается на <code>/exec</code>) должен стоять в <code>config.js</code> сайта, в строке <code>resultsUrl</code>.</li>
       <li>Проверка: кнопка ниже, затем любой тренажёр в зачётном режиме — результат появится в таблице и в разделе 2.</li>
@@ -182,6 +200,7 @@
     <div>
       <p class="kicker" id="s-title" style="font-size:20px"></p>
       <div class="hugecode" id="s-code"></div>
+      <p class="s-left" id="s-left"></p>
       <p class="s-how">Наведите камеру телефона на QR-код<br>или откройте <b id="s-site"></b> и введите код</p>
     </div>
     <canvas class="qr" id="s-qr"></canvas>
@@ -189,9 +208,9 @@
 </div>
 
 <script>document.write('<script src="config.js?t=' + Date.now() + '"><\/script>');</script>
-<script src="iit.js?v=20261115b"></script>
-<script src="iit-data.js?v=20261115b"></script>
-<script src="qr.js?v=20261115b"></script>
+<script src="iit.js?v=20261115c"></script>
+<script src="iit-data.js?v=20261115c"></script>
+<script src="qr.js?v=20261115c"></script>
 <script>
 (function () {
   'use strict';
@@ -205,43 +224,93 @@
     return '<label><input type="radio" name="tr" value="' + l + '"' + (i === 0 ? ' checked' : '') + '><span>' +
       esc(l === 'Z' ? 'Итоговый зачёт' : t.lecture.title) + '<small>' + esc(l === 'Z' ? 'все лекции, 24 задания' : 'лекция ' + t.n) + '</small></span></label>';
   }).join('');
-  let current = null;
+  let current = null, connected = '', serverRooms = [];
   const siteRoot = () => new URL('index.html', location.href).toString().replace(/index\.html$/, '');
-  const myRooms = () => { try { return JSON.parse(K.store.get('iit-rooms') || '[]'); } catch (e) { return []; } };
+  const mmss = sec => { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
+  const hhmm = t => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  document.querySelectorAll('input[name="tr"]').forEach(r => r.addEventListener('change', () => { $('#dur').value = r.value === 'Z' ? '45' : '20'; }));
 
-  function showRoom(code, title) {
-    const u = new URL(K.trainerUrl(code[0], code), location.href);
-    current = { code, title, link: u.toString() };
-    $('#r-title').textContent = title;
-    $('#r-code').textContent = code;
+  function showRoom(room) {
+    const u = new URL(K.trainerUrl(room.code[0], room.code), location.href);
+    current = Object.assign({}, room, { title: K.TRAINERS[room.code[0]].title, link: u.toString() });
+    $('#r-title').textContent = current.title;
+    $('#r-code').textContent = current.code;
     $('#r-link').value = current.link;
     K.drawQR($('#r-qr'), current.link, 240);
     $('#room').classList.remove('hidden');
     $('#r-warn').textContent = location.protocol === 'file:'
       ? 'Кабинет открыт как файл с компьютера: телефоны студентов не откроют такую ссылку. Откройте кабинет по адресу сайта (GitHub Pages).'
       : '';
+    tickRoom();
   }
-  function makeRoom() {
+  // время комнаты по часам сервера
+  const localDeadline = r => Date.now() + (r.deadline - r.now);
+  async function makeRoom() {
+    if (!connected) {
+      $('#r-warn').textContent = 'Сначала войдите в кабинет (пароль вверху страницы): комната регистрируется на сервере, иначе студенты не смогут в неё войти.';
+      $('#c-key').focus();
+      return false;
+    }
     const l = document.querySelector('input[name="tr"]:checked').value;
-    const code = K.makeRoom(l);
-    const title = K.TRAINERS[l].title;
-    showRoom(code, title);
-    const list = myRooms().filter(r => r.code !== code);
-    list.unshift({ code, title, at: new Date().toISOString() });
-    K.store.set('iit-rooms', JSON.stringify(list.slice(0, 12)));
-    drawMyRooms();
+    const code = K.makeRoom(l), minutes = Number($('#dur').value);
+    $('#mk').disabled = $('#mk-show').disabled = true;
+    $('#r-warn').textContent = '';
+    try {
+      const res = await K.api('room', { key: connected, room: code, minutes });
+      showRoom({ code, minutes: res.minutes, deadline: localDeadline(res) });
+      loadRooms();
+      return true;
+    } catch (e) {
+      $('#r-warn').textContent = 'Не удалось создать комнату: ' + (e.code === 'key' ? 'неверный пароль' : e.code === 'action' ? 'в Apps Script старая версия кода — обновите его (раздел 3)' : K.apiMessage(e));
+      return false;
+    } finally { $('#mk').disabled = $('#mk-show').disabled = false; }
+  }
+  async function loadRooms() {
+    if (!connected) return;
+    try {
+      const j = await K.api('rooms', { key: connected }, 2);
+      serverRooms = j.rooms.map(r => ({ code: r.room, minutes: r.minutes, created: r.created, deadline: Date.now() + (r.deadline - j.now) }));
+      drawMyRooms();
+    } catch (e) { /* список комнат — не главное */ }
   }
   function drawMyRooms() {
-    const list = myRooms();
+    const list = serverRooms.slice(0, 12);
     $('#myrooms-wrap').classList.toggle('hidden', !list.length);
-    $('#myrooms').innerHTML = list.map(r => '<button type="button" data-code="' + esc(r.code) + '" data-title="' + esc(r.title) + '"><b>' + esc(r.code) + '</b> ' +
-      esc(K.TRAINERS[r.code[0]] ? K.TRAINERS[r.code[0]].short : '') + ' <small>' + esc(new Date(r.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + '</small></button>').join('');
+    $('#myrooms').innerHTML = list.map(r => {
+      const left = (r.deadline - Date.now()) / 1000;
+      return '<button type="button" data-code="' + esc(r.code) + '"' + (left <= 0 ? ' class="closed"' : '') + '><b>' + esc(r.code) + '</b> ' +
+        esc(K.TRAINERS[r.code[0]] ? K.TRAINERS[r.code[0]].short : '') + ' <small>' +
+        (left > 0 ? 'ещё ' + mmss(left) : esc(new Date(r.created).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + ', закрыта') + '</small></button>';
+    }).join('');
   }
   $('#myrooms').addEventListener('click', e => {
     const b = e.target.closest('button');
-    if (b) showRoom(b.dataset.code, b.dataset.title);
+    const r = b && serverRooms.find(x => x.code === b.dataset.code);
+    if (r) showRoom(r);
   });
-  drawMyRooms();
+  function tickRoom() {
+    if (!current || !current.deadline) return;
+    const left = (current.deadline - Date.now()) / 1000;
+    const txt = left > 0 ? 'Осталось ' + mmss(left) + ' · до ' + hhmm(current.deadline) : 'Время комнаты вышло — новые проходы не начинаются';
+    [['#r-left', 'countdown'], ['#s-left', 's-left']].forEach(([sel, cls]) => {
+      const el = $(sel);
+      el.textContent = txt;
+      el.className = cls + (left <= 0 ? ' over' : left <= 120 ? ' warn' : '');
+    });
+  }
+  setInterval(() => { tickRoom(); if (serverRooms.length) drawMyRooms(); }, 1000);
+  $('#r-ext').addEventListener('click', async e => {
+    if (!current || !connected) return;
+    e.target.disabled = true;
+    try {
+      const res = await K.api('room', { key: connected, room: current.code, minutes: current.minutes + 5 });
+      current.minutes = res.minutes;
+      current.deadline = localDeadline(res);
+      tickRoom();
+      loadRooms();
+    } catch (err) { $('#r-warn').textContent = 'Не удалось продлить: ' + K.apiMessage(err); }
+    e.target.disabled = false;
+  });
   $('#mk').addEventListener('click', makeRoom);
   $('#r-copy').addEventListener('click', e => K.copy(current.link, e.target));
   $('#r-watch').addEventListener('click', () => {
@@ -254,6 +323,7 @@
     $('#s-title').textContent = current.title;
     $('#s-code').textContent = current.code;
     $('#s-site').textContent = siteRoot().replace(/^https?:\/\//, '');
+    tickRoom();
     $('#screen').classList.remove('hidden');
     const side = Math.min(window.innerHeight * 0.62, window.innerWidth * 0.42, 520);
     K.drawQR($('#s-qr'), current.link, side);
@@ -266,7 +336,7 @@
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
   $('#r-full').addEventListener('click', showScreen);
-  $('#mk-show').addEventListener('click', () => { makeRoom(); showScreen(); });
+  $('#mk-show').addEventListener('click', async () => { if (await makeRoom()) showScreen(); });
   $('#s-close').addEventListener('click', hideScreen);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') hideScreen(); });
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) $('#screen').classList.add('hidden'); });
@@ -310,6 +380,8 @@
       }
       if ($('#c-remember').checked) K.store.set('iit-key', key); else { K.store.set('iit-key', ''); SS.set('iit-key', key); }
       maxAttempts = j.maxAttempts;
+      if (!connected) { connected = key; loadRooms(); $('#r-warn').textContent = ''; }
+      connected = key;
       if (!bank) K.api('bank', { key }, 2).then(b => { bank = {}; b.items.forEach(it => { bank[it.id] = it; }); if (tab === 'hard') render(); }).catch(() => {});
       const fresh = [];
       serverRows = j.rows.map(norm);
@@ -352,6 +424,7 @@
   const fmtDur = s => (s >= 60 ? Math.floor(s / 60) + ' мин ' + (s % 60) + ' с' : s + ' с');
   const byRu = (a, b) => String(a).localeCompare(String(b), 'ru');
   const who = r => r.group + '\u0001' + r.fio;
+  const noSeed = s => String(s).replace(/~[a-z0-9]+/g, '');
 
   function fill(sel, values, current, all) {
     const el = $(sel);
@@ -440,7 +513,7 @@
         '</span><span>средний: ' + avg + ' %</span><span>зачтено: ' + b.filter(r => r.pct >= 61).length + '</span></summary>' +
         '<div class="tablewrap"><table class="rt"><thead><tr><th>Группа</th><th>ФИО</th><th class="num">Баллы</th><th class="num">%</th><th class="num">Время</th><th>Ошибки</th><th class="num">Попыток</th><th class="num">Проверка</th></tr></thead><tbody>' +
         b.map(r => '<tr' + (r.fresh ? ' class="fresh"' : '') + '><td>' + esc(r.group) + '</td><td>' + esc(r.fio) + '</td><td class="num">' + r.score + ' / ' + r.total +
-          '</td><td class="num ' + pctCls(r.pct) + '">' + r.pct + '</td><td class="num">' + fmtDur(r.seconds) + '</td><td>' + esc(r.mistakes) +
+          '</td><td class="num ' + pctCls(r.pct) + '">' + r.pct + '</td><td class="num">' + fmtDur(r.seconds) + '</td><td>' + esc(noSeed(r.mistakes)) +
           '</td><td class="num">' + rl.filter(x => who(x) === who(r)).length + '</td><td class="num">' + (r.valid ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>') + '</td></tr>').join('') +
         '</tbody></table></div></details>';
     }).join('');
@@ -451,7 +524,7 @@
     return '<div class="tablewrap"><table class="rt"><thead><tr><th>Получено</th><th>Группа</th><th>ФИО</th><th>Комната</th><th>Тренажёр</th><th class="num">Баллы</th><th class="num">%</th><th class="num">Время</th><th>Ошибки</th><th class="num">Проверка</th></tr></thead><tbody>' +
       l.map(r => '<tr' + (r.fresh ? ' class="fresh"' : '') + '><td>' + esc(fmtTime(r.time)) + '</td><td>' + esc(r.group) + '</td><td>' + esc(r.fio) +
         '</td><td>' + esc(r.room) + '</td><td>' + esc((K.TRAINERS[r.trainer] || {}).short || r.trainer) + '</td><td class="num">' + r.score + ' / ' + r.total +
-        '</td><td class="num ' + pctCls(r.pct) + '">' + r.pct + '</td><td class="num">' + fmtDur(r.seconds) + '</td><td>' + esc(r.mistakes) +
+        '</td><td class="num ' + pctCls(r.pct) + '">' + r.pct + '</td><td class="num">' + fmtDur(r.seconds) + '</td><td>' + esc(noSeed(r.mistakes)) +
         '</td><td class="num">' + (r.valid ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>') + '</td></tr>').join('') +
       '</tbody></table></div>';
   }
@@ -461,7 +534,7 @@
     list.forEach(r => {
       tries[r.trainer] = (tries[r.trainer] || 0) + 1;
       if (r.mistakes && r.mistakes !== 'нет') r.mistakes.split(/[;,]\s*/).filter(Boolean).forEach(id => {
-        const k = r.trainer + '|' + id.trim();
+        const k = r.trainer + '|' + noSeed(id.trim());
         cnt[k] = (cnt[k] || 0) + 1;
       });
     });
@@ -507,7 +580,7 @@
   $('#csv-a').addEventListener('click', () => {
     const list = filtered(false).slice().sort((a, b) => (a.time || 0) - (b.time || 0));
     download('попытки-ИИТ-' + stamp() + '.csv', [['Получено', 'Группа', 'ФИО', 'Комната', 'Тренажёр', 'Баллы', 'Всего', 'Процент', 'Длительность, с', 'Ошибки', 'Проверка']]
-      .concat(list.map(r => [r.time ? r.time.toLocaleString('ru-RU') : '', r.group, r.fio, r.room, r.title, r.score, r.total, r.pct, r.seconds, r.mistakes, r.valid ? 'да' : 'нет'])));
+      .concat(list.map(r => [r.time ? r.time.toLocaleString('ru-RU') : '', r.group, r.fio, r.room, r.title, r.score, r.total, r.pct, r.seconds, noSeed(r.mistakes), r.valid ? 'да' : 'нет'])));
   });
 
   // =============== 3. настройка ===============
@@ -529,7 +602,7 @@
     try {
       const j = await (await fetch(u + (u.includes('?') ? '&' : '?') + 'action=ping&_=' + Date.now())).json();
       m.innerHTML = !(j.ok && j.app === 'iit-trainers') ? 'Ответ получен, но это не скрипт тренажёров.'
-        : !j.v ? '<span class="badc">Связь есть, но в Apps Script старая версия кода.</span> Вставьте новый код сервера и файл Bank, создайте новую версию развёртывания.'
+        : !(j.v >= 3) ? '<span class="badc">Связь есть, но в Apps Script старая версия кода.</span> Вставьте новый код сервера и файл Bank, создайте новую версию развёртывания.'
         : !j.bank ? '<span class="badc">Связь есть, но в проекте нет файла Bank с заданиями.</span> Добавьте его (шаг 3) и создайте новую версию развёртывания.'
         : !j.keySet ? '<span class="badc">Связь есть, но в скрипте не заменён TEACHER_KEY.</span>'
         : '<span class="okc">Связь есть: сервер, банк заданий и пароль на месте.</span>';

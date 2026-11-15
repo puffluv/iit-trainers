@@ -154,7 +154,9 @@
     fields: 'Проверьте фамилию, имя, группу и согласие.',
     attempts: 'Вы уже использовали все попытки в этой комнате.',
     ticket: 'Результат не принят: данные попытки изменены. Начните зачёт заново.',
-    late: 'Время на зачётный проход истекло, результат не принят.',
+    late: 'Время этой комнаты истекло, результат не принят.',
+    'room-unknown': 'Комната не найдена. Попросите преподавателя создать комнату заново.',
+    'room-closed': 'Время этой комнаты истекло. Обратитесь к преподавателю.',
     network: 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
     busy: 'Сервер перегружен. Подождите несколько секунд и попробуйте ещё раз.',
     server: 'Ошибка сервера. Попробуйте ещё раз или сообщите преподавателю.'
@@ -329,6 +331,8 @@
           st.reg = reg;
           st.ticket = { sid: res.sid, t0: res.t0, ids: res.ids, sig: res.sig };
           st.title = res.title || T.title;
+          st.deadline = Date.now() + (res.deadline - res.now);   // по часам сервера: время на телефоне не важно
+          st.finished = false;
           begin('graded', res.items);
         }).catch(e => {
           go.disabled = false;
@@ -368,11 +372,13 @@
       mount.innerHTML =
         '<div class="progress"><span>Задание ' + (st.i + 1) + ' из ' + n + '</span>' +
         '<span class="track"><i style="width:' + (st.i / n * 100) + '%"></i></span>' +
+        (st.graded && st.deadline ? '<span class="timer" id="k-timer" title="Время до конца зачёта в этой комнате"></span>' : '') +
         '<span class="badge' + (st.graded ? ' graded' : '') + '">' + (st.graded ? 'зачёт' : 'самопроверка') + '</span></div>' +
         '<span class="tag">' + esc(tag) + '</span>' +
         '<div class="prompt">' + it.q + '</div>' + body +
         '<div class="verdict hidden" id="k-verdict" aria-live="polite"></div>' +
         '<div class="btn-row hidden" id="k-nav"><button class="btn" id="k-next">' + (st.i === n - 1 ? (st.graded ? 'Завершить и отправить' : 'К итогам') : 'Дальше') + '</button></div>';
+      tick();
 
       if (it.type === 'num') {
         const inp = $('#k-num', mount);
@@ -515,10 +521,25 @@
       mount.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
 
-    function sendGraded() {
+    // таймер зачёта: время комнаты, по истечении ответы отправляются сами
+    function tick() {
+      if (!st.graded || !st.deadline || st.finished) return;
+      const left = Math.round((st.deadline - Date.now()) / 1000);
+      const el = $('#k-timer', mount);
+      if (el) {
+        const s = Math.max(0, left);
+        el.textContent = '⏱ ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        el.classList.toggle('warn', s <= 120);
+      }
+      if (left <= 0) sendGraded(true);
+    }
+    setInterval(tick, 1000);
+
+    function sendGraded(timeUp) {
+      st.finished = true;
       const payload = Object.assign({ title: st.title }, st.reg, st.ticket, { answers: st.answers });
       K.store.set('iit-pending', JSON.stringify(payload));    // если связь пропадёт — результат не потеряется
-      mount.innerHTML = '<div class="send" data-state="busy"><h3>Отправляем ответы и считаем результат…</h3><p>' +
+      mount.innerHTML = '<div class="send" data-state="busy"><h3>' + (timeUp === true ? 'Время вышло — отправляем ваши ответы…' : 'Отправляем ответы и считаем результат…') + '</h3><p>' +
         esc(st.reg.fio) + ', ' + esc(st.reg.group) + ', комната ' + esc(st.reg.room) + '. Не закрывайте страницу.</p></div>';
       K.api('finish', payload).then(res => {
         K.store.set('iit-pending', '');
@@ -532,7 +553,7 @@
             'Можно и позже: откройте этот тренажёр на этом же устройстве.</p>' +
             '<div class="btn-row" style="margin-top:0"><button class="btn" id="k-retry">Отправить ещё раз</button></div>') + '</div>';
         const r = $('#k-retry', mount);
-        if (r) r.addEventListener('click', sendGraded);
+        if (r) r.addEventListener('click', () => sendGraded());
       });
     }
 

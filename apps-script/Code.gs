@@ -10,7 +10,7 @@
  *  1. Создайте Google Таблицу «Результаты тренажёров ИИТ».
  *  2. Расширения → Apps Script. Вставьте этот файл в Code.gs целиком.
  *  3. «+» → «Скрипт» → имя Bank. Вставьте содержимое приватного файла Bank.gs.
- *  4. Замените TEACHER_KEY ниже на свой пароль — по нему кабинет преподавателя читает результаты.
+ *  4. Замените TEACHER_KEY ниже на свой пароль — по нему кабинет создаёт комнаты и читает результаты.
  *  5. Сохраните. «Развернуть» → «Новое развёртывание» → тип «Веб-приложение»:
  *     «Запуск от имени» — Я, «У кого есть доступ» — Все. Разрешите доступ к таблице.
  *  6. Скопируйте URL веб-приложения (…/exec) в config.js сайта, в строку resultsUrl.
@@ -32,8 +32,11 @@ const TEACHER_KEY = 'ЗАМЕНИТЕ-НА-СВОЙ-ПАРОЛЬ';
 // Сколько зачётных попыток даётся студенту в одной комнате (0 — без ограничений).
 const MAX_ATTEMPTS = 3;
 
-// Сколько минут даётся на зачётный проход; результат, присланный позже, не принимается (0 — без ограничения).
-const TIME_LIMIT_MIN = 90;
+// Сколько минут после окончания времени комнаты ещё принимаются результаты (на случай плохой связи).
+const GRACE_MIN = 10;
+
+// Сколько заданий получает студент: по лекции и по каждой лекции в итоговом зачёте.
+const LECTURE_ITEMS = 10;
 
 // заготовка по умолчанию; собрана из частей, чтобы «заменить все» в редакторе её не задело
 const DEFAULT_KEY = ['ЗАМЕНИТЕ', 'НА', 'СВОЙ', 'ПАРОЛЬ'].join('-');
@@ -72,6 +75,8 @@ function doPost(e) {
     if (d.action === 'finish') return out_(finish_(d));
     if (d.action === 'list') return out_(list_(d));
     if (d.action === 'bank') return out_(bankForTeacher_(d));
+    if (d.action === 'room') return out_(room_(d));
+    if (d.action === 'rooms') return out_(rooms_(d));
     return out_({ ok: false, error: 'action' });
   } catch (err) {
     console.error(err);
@@ -81,7 +86,7 @@ function doPost(e) {
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
-  if (p.action === 'ping') return out_({ ok: true, app: 'iit-trainers', v: 2, keySet: TEACHER_KEY !== DEFAULT_KEY, bank: typeof BANK !== 'undefined' });
+  if (p.action === 'ping') return out_({ ok: true, app: 'iit-trainers', v: 3, keySet: TEACHER_KEY !== DEFAULT_KEY, bank: typeof BANK !== 'undefined' });
   return out_({ ok: false, error: 'action' });
 }
 
@@ -94,24 +99,24 @@ function start_(d) {
   if (!roomOk_(room)) return { ok: false, error: 'room' };
   if (fio.split(' ').length < 2 || group.length < 2 || !d.consent) return { ok: false, error: 'fields' };
   const trainer = room[0];
+  const reg = roomGet_(room);
+  if (!reg) return { ok: false, error: 'room-unknown' };
+  const now = Date.now(), deadline = reg.c + reg.m * 60000;
+  if (now > deadline) return { ok: false, error: 'room-closed' };
   if (MAX_ATTEMPTS > 0) {
     const used = attemptsOf_(room, fio, group);
     if (used >= MAX_ATTEMPTS) return { ok: false, error: 'attempts', max: MAX_ATTEMPTS };
   }
-  let items;
-  if (trainer === 'Z') {
-    items = [];
-    for (let n = 1; n <= 8; n++) items = items.concat(shuffle_(BANK[n].final).slice(0, FINAL_PER_LECTURE));
-  } else {
-    items = BANK[LECTURE_OF[trainer]].exam.slice();
-  }
+  let items = [];
+  if (trainer === 'Z') { for (let n = 1; n <= 8; n++) items = items.concat(draw_(n, FINAL_PER_LECTURE)); }
+  else items = draw_(LECTURE_OF[trainer], LECTURE_ITEMS);
   items = shuffle_(items);
   const ids = items.map(it => it.id);
-  const t0 = Date.now();
+  const t0 = now;
   const sid = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
   const ticket = [sid, trainer, room, fio, group, ids.join(','), t0].join('|');
   return {
-    ok: true, sid: sid, t0: t0, ids: ids, sig: sign_(ticket), title: TITLES[trainer], timeLimitMin: TIME_LIMIT_MIN,
+    ok: true, sid: sid, t0: t0, ids: ids, sig: sign_(ticket), title: TITLES[trainer], deadline: deadline, now: now,
     items: items.map(it => ({
       id: it.id, lec: lecOf_(it.id), type: it.type, q: it.q, unit: it.unit || '',
       o: it.type === 'num' ? null : shuffle_(it.o)          // варианты перемешаны, правильный не первый
@@ -129,7 +134,8 @@ function finish_(d) {
   const ticket = [String(d.sid), room[0], room, fio, group, ids.join(','), t0].join('|');
   if (!d.sig || sign_(ticket) !== d.sig) return { ok: false, error: 'ticket' };
   const now = Date.now();
-  if (TIME_LIMIT_MIN > 0 && now - t0 > (TIME_LIMIT_MIN + 5) * 60000) return { ok: false, error: 'late' };
+  const reg = roomGet_(room);
+  if (reg && now > reg.c + (reg.m + GRACE_MIN) * 60000) return { ok: false, error: 'late' };
 
   const answers = d.answers || {};
   let score = 0;
@@ -197,11 +203,14 @@ function bankForTeacher_(d) {
   if (k) return k;
   if (typeof BANK === 'undefined') return { ok: false, error: 'no-bank' };
   const items = [];
-  for (let n = 1; n <= 8; n++) BANK[n].exam.concat(BANK[n].final).forEach(it => items.push({
-    id: it.id, q: plain_(it.q), ref: it.ref || '',
-    answer: it.type === 'num' ? String(it.ans).replace('.', ',') + (it.unit ? ' ' + it.unit : '')
-      : it.type === 'order' ? it.o.map((s, i) => (i + 1) + ') ' + plain_(s)).join('  ') : plain_(it.o[0])
-  }));
+  for (let n = 1; n <= 8; n++) BANK[n].pool.forEach(src => {
+    const it = src.gen ? instantiate_(src, 'primer') : src;
+    items.push({
+      id: src.id, q: (src.gen ? 'Свои числа у каждого студента. Пример: ' : '') + plain_(it.q), ref: src.ref || '',
+      answer: (src.gen ? 'в примере — ' : '') + (it.type === 'num' ? String(it.ans).replace('.', ',') + (it.unit ? ' ' + it.unit : '')
+        : it.type === 'order' ? it.o.map((s, i) => (i + 1) + ') ' + plain_(s)).join('  ') : plain_(it.o[0]))
+    });
+  });
   return { ok: true, items: items };
 }
 
@@ -221,7 +230,73 @@ function isRight_(it, v) {
 function itemById_(id) {
   const n = lecOf_(id);
   if (!BANK[n]) return null;
-  return BANK[n].exam.concat(BANK[n].final).find(it => it.id === id) || null;
+  const parts = String(id).split('~');
+  const src = BANK[n].pool.find(it => it.id === parts[0]);
+  if (!src) return null;
+  return src.gen ? instantiate_(src, parts[1] || '') : src;
+}
+
+// семейство: номер без буквы варианта и без зерна генератора (4.02b, 4.02~k3j9 → 4.02)
+function familyOf_(id) { return String(id).split('~')[0].replace(/[a-z]$/, ''); }
+
+// случайные k семейств лекции, в каждом — случайный вариант; генераторы получают своё зерно
+function draw_(n, k) {
+  const fam = {};
+  BANK[n].pool.forEach(it => { const f = familyOf_(it.id); (fam[f] = fam[f] || []).push(it); });
+  return shuffle_(Object.keys(fam)).slice(0, k).map(f => {
+    const it = fam[f][Math.floor(Math.random() * fam[f].length)];
+    return it.gen ? instantiate_(it, Math.random().toString(36).slice(2, 8)) : it;
+  });
+}
+
+// вариант генератора по зерну: одно и то же зерно всегда даёт одни и те же числа
+function instantiate_(src, seed) {
+  return Object.assign({ ref: src.ref }, src.gen(rng_(src.id + '~' + seed)), { id: src.id + '~' + seed });
+}
+function rng_(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  let a = h >>> 0;
+  const next = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  return { next: next, int: (lo, hi) => lo + Math.floor(next() * (hi - lo + 1)), pick: arr => arr[Math.floor(next() * arr.length)] };
+}
+
+// ---------- комнаты: создаёт преподаватель, у комнаты есть длительность ----------
+function roomGet_(code) {
+  const v = PropertiesService.getScriptProperties().getProperty('room:' + code);
+  return v ? JSON.parse(v) : null;
+}
+function room_(d) {
+  const k = keyError_(d);
+  if (k) return k;
+  const code = String(d.room || '').toUpperCase();
+  const minutes = Math.round(Number(d.minutes));
+  if (!roomOk_(code)) return { ok: false, error: 'room' };
+  if (!(minutes >= 1 && minutes <= 600)) return { ok: false, error: 'minutes' };
+  const props = PropertiesService.getScriptProperties();
+  const reg = roomGet_(code) || { c: Date.now() };
+  reg.m = minutes;
+  props.setProperty('room:' + code, JSON.stringify(reg));
+  cleanupRooms_(props);
+  return { ok: true, room: code, created: reg.c, minutes: reg.m, deadline: reg.c + reg.m * 60000, now: Date.now() };
+}
+function rooms_(d) {
+  const k = keyError_(d);
+  if (k) return k;
+  const all = PropertiesService.getScriptProperties().getProperties();
+  const list = Object.keys(all).filter(key => key.indexOf('room:') === 0).map(key => {
+    const r = JSON.parse(all[key]);
+    return { room: key.slice(5), created: r.c, minutes: r.m, deadline: r.c + r.m * 60000 };
+  }).sort((a, b) => b.created - a.created).slice(0, 40);
+  return { ok: true, rooms: list, now: Date.now() };
+}
+// комнаты старше 60 дней удаляются, чтобы не копились в свойствах скрипта
+function cleanupRooms_(props) {
+  const all = props.getProperties(), old = Date.now() - 60 * 86400000;
+  Object.keys(all).forEach(key => {
+    if (key.indexOf('room:') !== 0) return;
+    try { if (JSON.parse(all[key]).c < old) props.deleteProperty(key); } catch (e) { props.deleteProperty(key); }
+  });
 }
 function lecOf_(id) { return Number(String(id).split('.')[0]); }
 function plain_(s) { return String(s).replace(/<div class="kb">[\s\S]*?<\/div>/, '').replace(/<[^>]+>/g, '').trim(); }

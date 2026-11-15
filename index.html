@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тренажёры ИИТ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="iit.css?v=20261115b">
+<style>
+  .join{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+  .join .field{flex:1 1 220px;margin:0}
+  .join .btn{flex:none}
+  section{margin-top:28px}
+</style>
+</head>
+<body>
+<div class="wrap narrow">
+  <div class="topbar"><a href="teacher.html">Кабинет преподавателя</a><button class="theme-btn" type="button">Светлая тема</button></div>
+  <header>
+    <p class="kicker">Дисциплина «Интеллектуальные информационные технологии»</p>
+    <h1>Тренажёры по лекциям ИИТ</h1>
+    <p class="sub">Короткие задания по каждой из восьми лекций: выбор ответа, расчёт и порядок шагов. После каждого ответа — разбор со ссылкой на раздел лекции. Открываются в браузере, в том числе с телефона.</p>
+  </header>
+
+  <div class="card">
+    <h2>Есть код комнаты?</h2>
+    <p class="hint" style="margin:0 0 12px">Преподаватель показывает его на занятии. Код можно набрать и русскими буквами — тренажёр поймёт.</p>
+    <div class="join">
+      <label class="field"><span class="hidden">Код комнаты</span>
+        <input class="code" id="code" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="D7KM4" aria-label="Код комнаты"></label>
+      <button class="btn" id="go" type="button">Войти</button>
+    </div>
+    <p class="err" id="err" role="alert"></p>
+  </div>
+
+  <section>
+    <h2>Лекции</h2>
+    <div class="list" id="lectures"></div>
+  </section>
+
+  <section>
+    <h2>Зачёт и практика</h2>
+    <div class="list">
+      <a class="item accent" href="trainer.html?t=Z"><p class="kicker">Все лекции</p><b>Итоговый зачёт</b>
+        <span>24 задания — по 3 из каждой лекции, у каждого свой набор. Есть пробный режим.</span></a>
+      <a class="item" href="klaviaturnyi_pocherk.html"><p class="kicker">Практика 2</p><b>Клавиатурный почерк</b>
+        <span>Измерьте интервалы своего ввода, сохраните эталон и проверьте, различит ли система вас и соседа.</span></a>
+    </div>
+  </section>
+
+  <footer>
+    <p><b>Два режима.</b> Самопроверка не требует регистрации, и результат видите только вы. Зачётный проход начинается с кода комнаты: вы указываете фамилию, имя и группу, даёте согласие на обработку персональных данных, и в конце результат сам уходит преподавателю. Баллы считает сервер, правильные ответы зачёта в браузере не видны.</p>
+    <p>В самопроверке и зачёте — разные задания. <a href="consent.html">Согласие на обработку персональных данных</a>.</p>
+  </footer>
+</div>
+<script>document.write('<script src="config.js?t=' + Date.now() + '"><\/script>');</script>
+<script src="iit.js?v=20261115b"></script>
+<script src="iit-data.js?v=20261115b"></script>
+<script>
+(function () {
+  'use strict';
+  const K = window.Kurs, esc = K.esc;
+  K.initTheme();
+  document.getElementById('lectures').innerHTML = K.LECTURES.map(l =>
+    '<a class="item" href="' + K.trainerUrl(l.letter) + '"><p class="kicker">Лекция ' + l.n + '</p><b>' + esc(l.title) + '</b>' +
+    '<span>' + esc(l.full) + '. ' + K.EXAM_COUNT + ' заданий в зачёте, ' + K.Q[l.n].self.length + ' — в самопроверке.</span></a>').join('');
+
+  const input = document.getElementById('code'), err = document.getElementById('err');
+  function go() {
+    const r = K.parseRoom(input.value);
+    if (!r.ok) { err.textContent = r.msg; input.focus(); return; }
+    const u = new URL(K.trainerUrl(r.letter, r.code), location.href);
+    if (document.documentElement.dataset.theme === 'light') u.searchParams.set('theme', 'light');
+    location.href = u.toString();
+  }
+  document.getElementById('go').addEventListener('click', go);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  input.addEventListener('input', () => { err.textContent = ''; });
+})();
+</script>
+</body>
+</html>

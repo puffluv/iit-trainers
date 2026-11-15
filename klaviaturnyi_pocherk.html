@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Клавиатурный почерк</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="iit.css?v=20261115b">
+<style>
+  section.card{margin-bottom:18px}
+  .typebox{font-size:26px;letter-spacing:.04em;font-weight:500}
+  .phrase{font-size:28px;font-weight:700;letter-spacing:.06em;color:var(--amber)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .row .field{flex:1 1 220px;margin:0}
+  .att{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+  .att span{font-size:14px;border:1px solid var(--line);border-radius:999px;padding:3px 12px;color:var(--ink-dim)}
+  .att span.on{border-color:var(--ok);color:var(--ok)}
+  svg.tl{width:100%;height:auto;display:block;margin:10px 0}
+  svg.tl text{fill:var(--ink);font:13px "Golos Text",system-ui,sans-serif}
+  svg.tl .dim{fill:var(--ink-dim)}
+  svg.tl .ax{stroke:var(--line)}
+  svg.tl rect{fill:var(--ok);opacity:.75}
+  .rt{width:100%;border-collapse:collapse;font-size:14px}
+  .rt th,.rt td{padding:6px;border-bottom:1px solid var(--line);text-align:left}
+  .rt th{color:var(--ink-dim);font-weight:500;font-size:13px}
+  .rt td.num,.rt th.num{text-align:center;font-variant-numeric:tabular-nums}
+  .neg{color:var(--no);font-weight:600}
+  .tablewrap{overflow-x:auto}
+  .refs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  .refs span{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;font-size:15px}
+  .refs button{border:0;background:var(--panel-2);color:var(--ink-dim);border-radius:999px;width:26px;height:26px;cursor:pointer}
+  .verdict2{padding:14px 16px;border-radius:10px;margin-top:12px;border-left:4px solid var(--line);background:var(--panel-2)}
+  .verdict2.ok{border-left-color:var(--ok)}
+  .verdict2.no{border-left-color:var(--no)}
+  .slider{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:15px}
+  .slider input{accent-color:var(--amber);width:200px}
+  select{min-height:44px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+</style>
+</head>
+<body>
+<div class="wrap narrow">
+  <div class="topbar"><a href="index.html">← Все тренажёры</a><button class="theme-btn" type="button">Светлая тема</button></div>
+  <header>
+    <p class="kicker">Практика 2 · Лекция 2, раздел 2.1, рисунки 2.3–2.4</p>
+    <h1>Клавиатурный почерк</h1>
+    <p class="sub">Наберите кодовое слово несколько раз — страница измерит четыре интервала вашего почерка, построит эталон и проверит, отличит ли система вас от соседа. Все данные остаются в этом браузере.</p>
+  </header>
+
+  <section class="card">
+    <h2>1. Кодовое слово</h2>
+    <div class="row">
+      <label class="field"><span>Слово, которое все набирают одинаково</span><input id="phrase" value="интеллект" autocomplete="off" spellcheck="false"></label>
+      <button class="btn ghost" id="set" type="button">Применить</button>
+    </div>
+    <p class="hint">Нужна физическая клавиатура: экранные клавиатуры телефонов часто не сообщают моменты нажатия и отпускания.</p>
+  </section>
+
+  <section class="card">
+    <h2>2. Наберите слово <span class="phrase" id="ph"></span> и нажмите Enter</h2>
+    <label class="field"><span class="hidden">Поле ввода</span><input class="typebox" id="type" autocomplete="off" spellcheck="false" autocapitalize="off" aria-label="Наберите кодовое слово"></label>
+    <p class="err" id="t-err" role="alert"></p>
+    <p class="hint" id="t-hint">Печатайте в своём обычном темпе. Исправлять опечатки нельзя — попытка с Backspace не засчитывается.</p>
+    <div class="att" id="att"></div>
+    <div id="last" class="hidden">
+      <h3 style="margin-top:18px">Последняя попытка: нажатие и отпускание клавиш</h3>
+      <div id="svg"></div>
+      <div class="tablewrap"><table class="rt" id="pairs"></table></div>
+      <p class="hint">Удержание — от нажатия до отпускания клавиши. Отрицательный интервал «отпускание → нажатие» (красным) значит, что следующую клавишу нажали раньше, чем отпустили предыдущую.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3. Эталоны</h2>
+    <p class="hint" style="margin:0 0 10px">Эталон — средние интервалы по попыткам выше (нужно не меньше 3). Сохраните свой эталон, затем пусть сосед очистит попытки, наберёт слово и сохранит свой.</p>
+    <div class="row">
+      <label class="field"><span>Имя эталона</span><input id="ref-name" placeholder="Например, Анна" autocomplete="off"></label>
+      <button class="btn" id="save" type="button" disabled>Сохранить эталон</button>
+      <button class="btn ghost" id="clear" type="button">Очистить попытки</button>
+    </div>
+    <div class="refs" id="refs"></div>
+  </section>
+
+  <section class="card">
+    <h2>4. Проверка: аутентификация и идентификация</h2>
+    <p class="hint" style="margin:0 0 10px">Наберите слово ещё раз (раздел 2) — последняя попытка сравнивается с эталонами. Расстояние d — средняя разница интервалов, делённая на средний интервал эталона: 0 — полное совпадение, 0,3 — различие примерно на 30 %.</p>
+    <div class="slider">
+      <label>Кем вы себя называете (аутентификация): <select id="claim"></select></label>
+    </div>
+    <div class="slider" style="margin-top:10px">
+      <label for="thr">Порог d:</label><input type="range" id="thr" min="0.05" max="0.6" step="0.01" value="0.25"><b id="thr-v"></b>
+    </div>
+    <div id="check"><p class="empty hint" style="margin-top:12px">Сохраните хотя бы один эталон и наберите слово.</p></div>
+    <div class="btn-row"><button class="btn ghost" id="csv" type="button">Скачать попытки (CSV для отчёта)</button></div>
+  </section>
+
+  <footer>
+    <p><b>Как это связано с лекцией.</b> Аутентификация — «один с одним»: почерк сравнивается только с эталоном названного пользователя. Идентификация — «один со многими»: выбирается самый похожий эталон. Порог — компромисс: низкий чаще отказывает «своему», высокий чаще пускает «чужого».</p>
+    <p>Сведения, по которым устанавливают личность, — персональные данные (152-ФЗ). Поэтому страница ничего никуда не отправляет.</p>
+  </footer>
+</div>
+<script src="iit.js?v=20261115b"></script>
+<script>
+(function () {
+  'use strict';
+  const K = window.Kurs, esc = K.esc, $ = K.$;
+  K.initTheme();
+  let phrase = 'интеллект';
+  let attempts = [];          // [{chars:[], down:[], up:[]}]
+  let cur = null;             // текущая попытка
+  let refs = [];
+  try { refs = JSON.parse(K.store.get('iit-kp-refs') || '[]'); } catch (e) { refs = []; }
+  const saved = K.store.get('iit-kp-phrase');
+  if (saved) { phrase = saved; $('#phrase').value = saved; }
+
+  const typeEl = $('#type');
+  function setPhrase() {
+    const p = $('#phrase').value.trim().toLowerCase();
+    if (p.length < 3) return;
+    if (p !== phrase) { phrase = p; attempts = []; K.store.set('iit-kp-phrase', p); }
+    $('#ph').textContent = '«' + phrase + '»';
+    drawAll();
+  }
+  $('#set').addEventListener('click', setPhrase);
+
+  function newAttempt() { cur = { keys: [], pending: {}, bad: false, t0: null }; }
+  newAttempt();
+
+  typeEl.addEventListener('keydown', e => {
+    if (e.isComposing || e.key === 'Unidentified' || e.key === 'Process') {
+      $('#t-err').textContent = 'Браузер не сообщает нажатия клавиш (так бывает на экранной клавиатуре). Откройте страницу на компьютере.';
+      return;
+    }
+    if (e.key === 'Enter') { e.preventDefault(); finishAttempt(); return; }
+    if (e.key === 'Backspace' || e.key === 'Delete') { cur.bad = true; return; }
+    if (e.repeat || e.key.length !== 1) return;
+    const t = performance.now();
+    const k = { ch: e.key.toLowerCase(), down: t, up: null };
+    cur.keys.push(k);
+    cur.pending[e.code || e.key] = k;
+  });
+  typeEl.addEventListener('keyup', e => {
+    const k = cur.pending[e.code || e.key];
+    if (k && k.up === null) { k.up = performance.now(); delete cur.pending[e.code || e.key]; }
+  });
+
+  function finishAttempt() {
+    const text = typeEl.value.trim().toLowerCase();
+    const ks = cur.keys;
+    typeEl.value = '';
+    if (cur.bad) { $('#t-err').textContent = 'Попытка с исправлениями не засчитана — наберите слово без Backspace.'; newAttempt(); return; }
+    if (text !== phrase || ks.map(k => k.ch).join('') !== phrase) {
+      $('#t-err').textContent = 'Набрано не то слово (или его вставили). Наберите «' + phrase + '» заново.'; newAttempt(); return;
+    }
+    // клавиша, отпущенная после Enter, — берём медианное удержание
+    const holds = ks.filter(k => k.up !== null).map(k => k.up - k.down).sort((a, b) => a - b);
+    const med = holds.length ? holds[Math.floor(holds.length / 2)] : 90;
+    ks.forEach(k => { if (k.up === null) k.up = k.down + med; });
+    const t0 = ks[0].down;
+    attempts.push({ chars: ks.map(k => k.ch), down: ks.map(k => Math.round(k.down - t0)), up: ks.map(k => Math.round(k.up - t0)) });
+    $('#t-err').textContent = '';
+    newAttempt();
+    drawAll();
+  }
+
+  // признаки попытки: удержания, нажатие→нажатие, отпускание→отпускание, отпускание→нажатие
+  function features(a) {
+    const n = a.down.length, H = [], DD = [], UU = [], UD = [];
+    for (let i = 0; i < n; i++) H.push(a.up[i] - a.down[i]);
+    for (let i = 0; i < n - 1; i++) {
+      DD.push(a.down[i + 1] - a.down[i]);
+      UU.push(a.up[i + 1] - a.up[i]);
+      UD.push(a.down[i + 1] - a.up[i]);
+    }
+    return { H, DD, UU, UD };
+  }
+  const vec = f => f.H.concat(f.DD, f.UD);
+  function profile(list) {
+    const vs = list.map(a => vec(features(a)));
+    return vs[0].map((_, i) => Math.round(vs.reduce((s, v) => s + v[i], 0) / vs.length));
+  }
+  function dist(v, e) {
+    const m = e.reduce((s, x) => s + Math.abs(x), 0) / e.length || 1;
+    return v.reduce((s, x, i) => s + Math.abs(x - e[i]), 0) / v.length / m;
+  }
+  const f2 = x => x.toFixed(2).replace('.', ',');
+
+  function drawAll() {
+    $('#ph').textContent = '«' + phrase + '»';
+    $('#att').innerHTML = attempts.map((a, i) => '<span class="on">попытка ' + (i + 1) + ': ' + a.up[a.up.length - 1] + ' мс</span>').join('') +
+      (attempts.length < 3 ? '<span>нужно ещё ' + (3 - attempts.length) + ' для эталона</span>' : '');
+    $('#save').disabled = attempts.length < 3;
+    const a = attempts[attempts.length - 1];
+    $('#last').classList.toggle('hidden', !a);
+    if (a) drawLast(a);
+    drawRefs();
+    drawCheck();
+  }
+
+  function drawLast(a) {
+    const n = a.chars.length, end = Math.max(...a.up), W = 760, rowH = 26, top = 10, left = 36, H = top + n * rowH + 30;
+    const x = t => left + t / end * (W - left - 14);
+    let s = '<svg class="tl" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Временная диаграмма нажатий">';
+    for (let t = 0; t <= end; t += end > 2000 ? 500 : end > 800 ? 200 : 100) {
+      s += '<line class="ax" x1="' + x(t) + '" x2="' + x(t) + '" y1="' + top + '" y2="' + (top + n * rowH) + '"/>' +
+        '<text class="dim" x="' + x(t) + '" y="' + (top + n * rowH + 18) + '" text-anchor="middle">' + t + '</text>';
+    }
+    a.chars.forEach((c, i) => {
+      const y = top + i * rowH;
+      s += '<text x="8" y="' + (y + 17) + '">' + esc(c) + '</text><rect x="' + x(a.down[i]) + '" y="' + (y + 4) + '" width="' + Math.max(2, x(a.up[i]) - x(a.down[i])) + '" height="' + (rowH - 8) + '" rx="4"/>';
+    });
+    s += '<text class="dim" x="' + (W - 14) + '" y="' + (H - 2) + '" text-anchor="end">мс</text></svg>';
+    $('#svg').innerHTML = s;
+    const f = features(a);
+    $('#pairs').innerHTML = '<thead><tr><th>Пара клавиш</th><th class="num">Удержание первой</th><th class="num">Нажатие → нажатие</th><th class="num">Отпускание → отпускание</th><th class="num">Отпускание → нажатие</th></tr></thead><tbody>' +
+      f.DD.map((_, i) => '<tr><td>«' + esc(a.chars[i]) + '» → «' + esc(a.chars[i + 1]) + '»</td><td class="num">' + f.H[i] + '</td><td class="num">' + f.DD[i] +
+        '</td><td class="num">' + f.UU[i] + '</td><td class="num' + (f.UD[i] < 0 ? ' neg' : '') + '">' + f.UD[i] + '</td></tr>').join('') +
+      '<tr><td>«' + esc(a.chars[a.chars.length - 1]) + '» (последняя)</td><td class="num">' + f.H[f.H.length - 1] + '</td><td></td><td></td><td></td></tr></tbody>';
+  }
+
+  function drawRefs() {
+    const mine = refs.filter(r => r.phrase === phrase);
+    $('#refs').innerHTML = mine.length ? mine.map(r => '<span>' + esc(r.name) + ' <small class="hint" style="margin:0">' + r.n + ' попыток</small><button type="button" data-name="' + esc(r.name) + '" aria-label="Удалить эталон">×</button></span>').join('')
+      : '<span class="hint" style="border:0;padding:0">Эталонов для этого слова пока нет.</span>';
+    const sel = $('#claim'), prev = sel.value;
+    sel.innerHTML = mine.map(r => '<option' + (r.name === prev ? ' selected' : '') + '>' + esc(r.name) + '</option>').join('');
+  }
+  $('#refs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-name]');
+    if (!b) return;
+    refs = refs.filter(r => !(r.phrase === phrase && r.name === b.dataset.name));
+    K.store.set('iit-kp-refs', JSON.stringify(refs));
+    drawAll();
+  });
+  $('#save').addEventListener('click', () => {
+    const name = $('#ref-name').value.trim() || 'Пользователь ' + (refs.filter(r => r.phrase === phrase).length + 1);
+    refs = refs.filter(r => !(r.phrase === phrase && r.name === name));
+    refs.push({ name, phrase, n: attempts.length, v: profile(attempts) });
+    K.store.set('iit-kp-refs', JSON.stringify(refs));
+    $('#ref-name').value = '';
+    attempts = [];
+    drawAll();
+  });
+  $('#clear').addEventListener('click', () => { attempts = []; drawAll(); typeEl.focus(); });
+
+  function drawCheck() {
+    const thr = Number($('#thr').value);
+    $('#thr-v').textContent = f2(thr);
+    const mine = refs.filter(r => r.phrase === phrase);
+    const a = attempts[attempts.length - 1];
+    if (!mine.length || !a) { $('#check').innerHTML = '<p class="hint" style="margin-top:12px">Сохраните хотя бы один эталон и наберите слово.</p>'; return; }
+    const v = vec(features(a));
+    const ds = mine.map(r => ({ name: r.name, d: dist(v, r.v) })).sort((p, q) => p.d - q.d);
+    const claim = $('#claim').value || mine[0].name;
+    const dc = ds.find(x => x.name === claim);
+    const auth = dc.d <= thr;
+    const near = ds[0];
+    $('#check').innerHTML =
+      '<div class="verdict2 ' + (auth ? 'ok' : 'no') + '"><b>Аутентификация («один с одним»):</b> вы назвались «' + esc(claim) + '», d = ' + f2(dc.d) + ' ' + (auth ? '≤' : '>') + ' ' + f2(thr) +
+      ' → <b>' + (auth ? 'доступ разрешён' : 'отказ') + '</b>.</div>' +
+      '<div class="verdict2 ' + (near.d <= thr ? 'ok' : 'no') + '"><b>Идентификация («один со многими»):</b> ' +
+      (near.d <= thr ? 'ближе всего эталон «' + esc(near.name) + '» (d = ' + f2(near.d) + ').' : 'ни один эталон не ближе порога — пользователь не опознан.') + '</div>' +
+      '<div class="tablewrap"><table class="rt" style="margin-top:12px"><thead><tr><th>Эталон</th><th class="num">d</th><th class="num">Порог ' + f2(thr) + '</th></tr></thead><tbody>' +
+      ds.map(x => '<tr><td>' + esc(x.name) + '</td><td class="num">' + f2(x.d) + '</td><td class="num">' + (x.d <= thr ? 'проходит' : 'нет') + '</td></tr>').join('') + '</tbody></table></div>';
+  }
+  $('#thr').addEventListener('input', drawCheck);
+  $('#claim').addEventListener('change', drawCheck);
+
+  $('#csv').addEventListener('click', () => {
+    const rows = [['Попытка', 'Клавиша', 'Нажатие, мс', 'Отпускание, мс', 'Удержание, мс', 'Отпускание → нажатие следующей, мс']];
+    attempts.forEach((a, i) => a.chars.forEach((c, j) => rows.push([i + 1, c, a.down[j], a.up[j], a.up[j] - a.down[j], j < a.chars.length - 1 ? a.down[j + 1] - a.up[j] : ''])));
+    const csv = '﻿' + rows.map(r => r.join(';')).join('\r\n');
+    const el = document.createElement('a');
+    el.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    el.download = 'klaviaturnyi-pocherk.csv';
+    el.click();
+  });
+
+  setPhrase();
+  typeEl.focus();
+})();
+</script>
+</body>
+</html>

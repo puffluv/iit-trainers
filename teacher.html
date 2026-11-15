@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кабинет преподавателя · ИИТ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="iit.css?v=20261115b">
+<style>
+  section.card{margin-bottom:18px}
+  .pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:12px 0 0}
+  .pick label{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:10px;cursor:pointer;min-height:58px}
+  .pick label:has(input:checked){border-color:var(--amber);background:var(--amber-bg)}
+  .pick input{width:20px;height:20px;margin-top:3px;accent-color:var(--amber);flex:none}
+  .pick small{display:block;color:var(--ink-dim);font-size:13px}
+  .roombox{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:start;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  @media (max-width:700px){.roombox{grid-template-columns:1fr}}
+  .bigcode{font-size:56px;font-weight:700;letter-spacing:.12em;line-height:1.1;margin:0 0 6px}
+  .field input[readonly]{font-size:15px}
+  canvas.qr{display:block;border-radius:8px;max-width:100%}
+  .screen{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+  .screen .close{position:absolute;top:16px;right:16px}
+  .screen-in{display:flex;gap:48px;align-items:center;justify-content:center;flex-wrap:wrap;text-align:left}
+  .hugecode{font-size:clamp(72px,14vw,190px);font-weight:700;letter-spacing:.1em;line-height:1}
+  .s-how{font-size:clamp(18px,2.2vw,28px);color:var(--ink-dim);margin:16px 0 0;line-height:1.4}
+  .s-how b{color:var(--ink);word-break:break-all}
+  .myrooms{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .myrooms button{border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font:inherit;font-size:14px;border-radius:999px;padding:5px 12px;cursor:pointer}
+  .myrooms button:hover{border-color:var(--ink-dim)}
+  .myrooms small{color:var(--ink-dim)}
+
+  .conn{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .conn .field{flex:1 1 240px;margin:0}
+  .status{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:15px;color:var(--ink-dim);margin:14px 0 0}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--line);display:inline-block}
+  .dot.live{background:var(--ok);box-shadow:0 0 0 0 var(--ok-bg);animation:pulse 2s infinite}
+  .dot.err{background:var(--no)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 var(--ok-bg)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  .toggle{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--ink)}
+  .toggle input{width:20px;height:20px;accent-color:var(--ok)}
+  textarea{width:100%;min-height:110px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);
+    color:var(--ink);font:13px/1.5 ui-monospace,Consolas,monospace}
+  .filters{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0 6px;font-size:15px;align-items:center}
+  .filters select{margin-left:6px;min-height:40px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+  .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:12px 0}
+  .stats div{background:var(--panel-2);border-radius:10px;padding:10px 14px}
+  .stats span{display:block;font-size:13px;color:var(--ink-dim)}
+  .stats b{font-size:24px;font-variant-numeric:tabular-nums}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:16px 0 0}
+  .tabs button{border:0;background:none;color:var(--ink-dim);font:inherit;font-size:16px;padding:10px 14px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+  .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--amber);font-weight:600}
+  .tablewrap{overflow-x:auto;margin-top:8px}
+  .rt{width:100%;border-collapse:collapse;font-size:14px}
+  .rt th,.rt td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  .rt th{color:var(--ink-dim);font-weight:500;font-size:13px;white-space:nowrap}
+  .rt td.num,.rt th.num{text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rt td.c90{background:var(--ok-bg);color:var(--ok);font-weight:600}
+  .rt td.c61{background:var(--amber-bg);color:var(--amber);font-weight:600}
+  .rt td.c0{background:var(--no-bg);color:var(--no);font-weight:600}
+  .rt tr.fresh td{animation:fresh 4s ease-out}
+  @keyframes fresh{from{background:var(--amber-bg)}to{background:transparent}}
+  .grp{margin:18px 0 6px;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+  .grp b{font-size:18px}
+  .grp span{color:var(--ink-dim);font-size:14px}
+  details.room{border:1px solid var(--line);border-radius:10px;margin:10px 0;padding:0 14px}
+  details.room > summary{cursor:pointer;padding:12px 0;display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;list-style:none}
+  details.room > summary::-webkit-details-marker{display:none}
+  details.room > summary b{font-size:18px;letter-spacing:.06em}
+  details.room > summary span{color:var(--ink-dim);font-size:14px}
+  .okc{color:var(--ok);font-weight:600}
+  .badc{color:var(--no);font-weight:600}
+  .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;min-width:80px}
+  .bar i{display:block;height:100%;background:var(--no)}
+  .empty{color:var(--ink-dim);padding:18px 0}
+  details.card > summary{cursor:pointer;list-style:none}
+  details.card > summary::-webkit-details-marker{display:none}
+  details.card > summary h2{display:inline}
+  details.card > summary::after{content:' ▾';color:var(--ink-dim)}
+  .steps li{margin-bottom:10px}
+  code{font-size:.92em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><a href="index.html">← Все тренажёры</a><button class="theme-btn" type="button">Светлая тема</button></div>
+  <header>
+    <p class="kicker">Для преподавателя</p>
+    <h1>Кабинет преподавателя</h1>
+    <p class="sub">Создайте комнату для занятия и покажите QR-код. Результаты зачётных проходов появляются здесь сами — по группам и комнатам — и одновременно сохраняются в вашей Google Таблице. Зачётные задания с ответами хранятся только в вашем скрипте Google.</p>
+  </header>
+
+  <section class="card">
+    <h2>1. Комната для занятия</h2>
+    <p class="hint" style="margin:0">Выберите тренажёр и нажмите кнопку — QR-код откроется на весь экран. Студенты сканируют его и сразу попадают в зачётный проход этой комнаты.</p>
+    <div class="pick" id="pick"></div>
+    <div class="btn-row">
+      <button class="btn" id="mk-show" type="button">Создать комнату и показать QR</button>
+      <button class="btn ghost" id="mk" type="button">Только создать</button>
+    </div>
+    <p class="err" id="r-warn"></p>
+    <div id="room" class="roombox hidden">
+      <div>
+        <p class="kicker" id="r-title"></p>
+        <div class="bigcode" id="r-code"></div>
+        <label class="field"><span>Ссылка для студентов</span><input id="r-link" readonly></label>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn" id="r-full" type="button">Показать на весь экран</button>
+          <button class="btn ghost" id="r-copy" type="button">Скопировать ссылку</button>
+          <button class="btn ghost" id="r-watch" type="button">Смотреть результаты комнаты</button>
+        </div>
+      </div>
+      <canvas class="qr" id="r-qr" aria-label="QR-код ссылки на комнату"></canvas>
+    </div>
+    <div id="myrooms-wrap" class="hidden"><p class="hint" style="margin-top:16px">Комнаты, созданные в этом браузере (нажмите, чтобы снова показать QR):</p><div class="myrooms" id="myrooms"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>2. Результаты</h2>
+    <div id="conn">
+      <div class="conn">
+        <label class="field"><span>Пароль кабинета (TEACHER_KEY из скрипта таблицы)</span><input id="c-key" type="password" autocomplete="current-password"></label>
+        <button class="btn" id="c-go" type="button">Подключиться</button>
+      </div>
+      <label class="toggle" style="margin-top:10px;font-size:15px"><input type="checkbox" id="c-remember"> запомнить пароль на этом компьютере — не отмечайте на общем компьютере аудитории</label>
+      <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Другой адрес таблицы</summary>
+        <label class="field" style="margin-top:8px"><span>URL веб-приложения Apps Script (…/exec). По умолчанию — из config.js</span><input id="c-url" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      </details>
+    </div>
+    <div class="status" id="status"><span class="dot" id="dot"></span><span id="s-text">Не подключено</span>
+      <label class="toggle hidden" id="auto-wrap"><input type="checkbox" id="auto" checked> обновлять каждые 15 с</label>
+      <button class="btn ghost hidden" id="refresh" type="button" style="min-height:36px;padding:4px 14px;font-size:15px">Обновить сейчас</button>
+      <button class="btn ghost hidden" id="logout" type="button" style="min-height:36px;padding:4px 14px;font-size:15px">Выйти</button>
+    </div>
+    <p class="err" id="c-err" role="alert"></p>
+
+
+    <div id="res" class="hidden">
+      <div class="filters">
+        <label>Группа <select id="f-gr"></select></label>
+        <label>Комната <select id="f-room"></select></label>
+        <label>Тренажёр <select id="f-tr"></select></label>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="journal" aria-selected="true">Журнал по группам</button>
+        <button role="tab" data-tab="rooms">По комнатам</button>
+        <button role="tab" data-tab="all">Все попытки</button>
+        <button role="tab" data-tab="hard">Трудные задания</button>
+      </div>
+      <div id="view"></div>
+      <div class="btn-row">
+        <button class="btn ghost" id="csv-j" type="button">Скачать журнал (CSV для Excel)</button>
+        <button class="btn ghost" id="csv-a" type="button">Скачать все попытки (CSV)</button>
+      </div>
+      <p class="hint">В журнале — лучший процент студента по каждому тренажёру: повторные попытки не тянут оценку вниз. Зелёный — от 90 %, жёлтый — от 61 %, красный — ниже 61 %. Баллы считает сервер по ответам студента, поэтому подделать результат в браузере нельзя. «Проверка»: ✓ — строка записана сервером.</p>
+    </div>
+  </section>
+
+  <details class="card" id="setup">
+    <summary><h2>3. Настройка Google Таблицы</h2></summary>
+    <p id="cfg-status" style="margin-top:12px"></p>
+    <ol class="steps">
+      <li>Создайте Google Таблицу, например «Результаты тренажёров ИИТ».</li>
+      <li>В таблице: <b>Расширения → Apps Script</b>. В файл <code>Code.gs</code> вставьте код сервера: <button class="btn ghost" id="copy-gs" type="button" style="min-height:36px;padding:4px 14px;font-size:15px">Скопировать код сервера</button></li>
+      <li>Нажмите <b>«+» → «Скрипт»</b>, назовите файл <code>Bank</code> и вставьте содержимое приватного файла <code>private/Bank.gs</code> из папки проекта на вашем компьютере. В нём зачётные задания с ответами — на сайте его нет.</li>
+      <li>В начале <code>Code.gs</code> замените <code>ЗАМЕНИТЕ-НА-СВОЙ-ПАРОЛЬ</code> на свой пароль. Там же можно изменить <code>MAX_ATTEMPTS</code> (попыток на студента в комнате) и <code>TIME_LIMIT_MIN</code> (минут на проход).</li>
+      <li>Нажмите «Сохранить», затем <b>Развернуть → Новое развёртывание</b>, тип — «Веб-приложение»; «Запуск от имени» — <b>Я</b>, «У кого есть доступ» — <b>Все</b>. При обновлении кода — <b>Управление развёртываниями → ✎ → Новая версия</b>.</li>
+      <li>Адрес веб-приложения (заканчивается на <code>/exec</code>) должен стоять в <code>config.js</code> сайта, в строке <code>resultsUrl</code>.</li>
+      <li>Проверка: кнопка ниже, затем любой тренажёр в зачётном режиме — результат появится в таблице и в разделе 2.</li>
+    </ol>
+    <div class="btn-row"><button class="btn ghost" id="ping" type="button">Проверить связь с таблицей</button></div>
+    <p class="hint" id="ping-msg"></p>
+    <p class="hint">В таблице появятся листы: «Все результаты», отдельный лист на каждую группу, «Сводка по группам» (журнал) и «Комнаты». Сводка и комнаты пересчитываются раз в минуту или через меню «Тренажёры ИИТ».</p>
+  </details>
+</div>
+
+<div id="screen" class="screen hidden" role="dialog" aria-label="Код комнаты для студентов">
+  <button class="btn ghost close" id="s-close" type="button">Закрыть</button>
+  <div class="screen-in">
+    <div>
+      <p class="kicker" id="s-title" style="font-size:20px"></p>
+      <div class="hugecode" id="s-code"></div>
+      <p class="s-how">Наведите камеру телефона на QR-код<br>или откройте <b id="s-site"></b> и введите код</p>
+    </div>
+    <canvas class="qr" id="s-qr"></canvas>
+  </div>
+</div>
+
+<script>document.write('<script src="config.js?t=' + Date.now() + '"><\/script>');</script>
+<script src="iit.js?v=20261115b"></script>
+<script src="iit-data.js?v=20261115b"></script>
+<script src="qr.js?v=20261115b"></script>
+<script>
+(function () {
+  'use strict';
+  const K = window.Kurs, esc = K.esc, $ = K.$;
+  K.initTheme();
+  const CFG = K.config;
+
+  // =============== 1. комната ===============
+  $('#pick').innerHTML = K.ORDER.map((l, i) => {
+    const t = K.TRAINERS[l];
+    return '<label><input type="radio" name="tr" value="' + l + '"' + (i === 0 ? ' checked' : '') + '><span>' +
+      esc(l === 'Z' ? 'Итоговый зачёт' : t.lecture.title) + '<small>' + esc(l === 'Z' ? 'все лекции, 24 задания' : 'лекция ' + t.n) + '</small></span></label>';
+  }).join('');
+  let current = null;
+  const siteRoot = () => new URL('index.html', location.href).toString().replace(/index\.html$/, '');
+  const myRooms = () => { try { return JSON.parse(K.store.get('iit-rooms') || '[]'); } catch (e) { return []; } };
+
+  function showRoom(code, title) {
+    const u = new URL(K.trainerUrl(code[0], code), location.href);
+    current = { code, title, link: u.toString() };
+    $('#r-title').textContent = title;
+    $('#r-code').textContent = code;
+    $('#r-link').value = current.link;
+    K.drawQR($('#r-qr'), current.link, 240);
+    $('#room').classList.remove('hidden');
+    $('#r-warn').textContent = location.protocol === 'file:'
+      ? 'Кабинет открыт как файл с компьютера: телефоны студентов не откроют такую ссылку. Откройте кабинет по адресу сайта (GitHub Pages).'
+      : '';
+  }
+  function makeRoom() {
+    const l = document.querySelector('input[name="tr"]:checked').value;
+    const code = K.makeRoom(l);
+    const title = K.TRAINERS[l].title;
+    showRoom(code, title);
+    const list = myRooms().filter(r => r.code !== code);
+    list.unshift({ code, title, at: new Date().toISOString() });
+    K.store.set('iit-rooms', JSON.stringify(list.slice(0, 12)));
+    drawMyRooms();
+  }
+  function drawMyRooms() {
+    const list = myRooms();
+    $('#myrooms-wrap').classList.toggle('hidden', !list.length);
+    $('#myrooms').innerHTML = list.map(r => '<button type="button" data-code="' + esc(r.code) + '" data-title="' + esc(r.title) + '"><b>' + esc(r.code) + '</b> ' +
+      esc(K.TRAINERS[r.code[0]] ? K.TRAINERS[r.code[0]].short : '') + ' <small>' + esc(new Date(r.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + '</small></button>').join('');
+  }
+  $('#myrooms').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) showRoom(b.dataset.code, b.dataset.title);
+  });
+  drawMyRooms();
+  $('#mk').addEventListener('click', makeRoom);
+  $('#r-copy').addEventListener('click', e => K.copy(current.link, e.target));
+  $('#r-watch').addEventListener('click', () => {
+    filterRoom = current.code;
+    if (rows().length) { render(); }
+    $('#res').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  function showScreen() {
+    $('#s-title').textContent = current.title;
+    $('#s-code').textContent = current.code;
+    $('#s-site').textContent = siteRoot().replace(/^https?:\/\//, '');
+    $('#screen').classList.remove('hidden');
+    const side = Math.min(window.innerHeight * 0.62, window.innerWidth * 0.42, 520);
+    K.drawQR($('#s-qr'), current.link, side);
+    const el = $('#screen');
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    $('#s-close').focus();
+  }
+  function hideScreen() {
+    $('#screen').classList.add('hidden');
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+  $('#r-full').addEventListener('click', showScreen);
+  $('#mk-show').addEventListener('click', () => { makeRoom(); showScreen(); });
+  $('#s-close').addEventListener('click', hideScreen);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hideScreen(); });
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) $('#screen').classList.add('hidden'); });
+
+  // =============== 2. результаты ===============
+  let serverRows = [], seen = null, timer = null, filterRoom = '', tab = 'journal', bank = null, maxAttempts = null;
+  const url = () => String(K.store.get('iit-url') || CFG.resultsUrl || '').trim();
+  $('#c-url').value = K.store.get('iit-url') || '';
+  const SS = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* нет хранилища */ } } };
+  $('#c-key').value = K.store.get('iit-key') || SS.get('iit-key') || '';
+  $('#c-remember').checked = !!K.store.get('iit-key');
+
+  function norm(r) {
+    const o = Object.assign({}, r);
+    ['score', 'total', 'pct', 'seconds'].forEach(k => { o[k] = Number(o[k]) || 0; });
+    ['group', 'fio', 'room', 'trainer', 'title', 'mistakes', 'uid', 'check'].forEach(k => { o[k] = String(o[k] == null ? '' : o[k]); });
+    if (!o.pct && o.total) o.pct = Math.round(o.score / o.total * 100);
+    o.time = o.received ? new Date(o.received) : null;
+    o.valid = o.check === 'сервер';
+    if (!o.title) o.title = (K.TRAINERS[o.trainer] || {}).title || o.trainer;
+    return o;
+  }
+  const rows = () => serverRows;
+
+  function setStatus(kind, text) {
+    $('#dot').className = 'dot' + (kind ? ' ' + kind : '');
+    $('#s-text').textContent = text;
+  }
+  async function load(first) {
+    const u = url(), key = $('#c-key').value.trim();
+    if (!u) { $('#c-err').textContent = 'Адрес таблицы не задан: заполните resultsUrl в config.js (раздел 3) или укажите «Другой адрес таблицы».'; return; }
+    if (!key) { $('#c-err').textContent = 'Введите пароль кабинета.'; return; }
+    $('#c-err').textContent = '';
+    if (first) setStatus('', 'Подключаемся…');
+    try {
+      let j;
+      try { j = await K.api('list', { key }, 2); } catch (e) {
+        throw new Error(e.code === 'key' ? 'Неверный пароль кабинета.' : e.code === 'default-key'
+          ? 'В скрипте таблицы не заменён TEACHER_KEY. Замените его и создайте новую версию развёртывания.'
+          : e.code === 'network' ? '' : 'Таблица ответила ошибкой: ' + e.code);
+      }
+      if ($('#c-remember').checked) K.store.set('iit-key', key); else { K.store.set('iit-key', ''); SS.set('iit-key', key); }
+      maxAttempts = j.maxAttempts;
+      if (!bank) K.api('bank', { key }, 2).then(b => { bank = {}; b.items.forEach(it => { bank[it.id] = it; }); if (tab === 'hard') render(); }).catch(() => {});
+      const fresh = [];
+      serverRows = j.rows.map(norm);
+      if (seen) serverRows.forEach(r => { if (!seen.has(r.uid)) { r.fresh = true; fresh.push(r); } });
+      seen = new Set(serverRows.map(r => r.uid));
+      setStatus('live', 'Подключено · обновлено ' + new Date().toLocaleTimeString('ru-RU') + (fresh.length ? ' · новых: ' + fresh.length : ''));
+      ['#auto-wrap', '#refresh', '#logout'].forEach(s => $(s).classList.remove('hidden'));
+      $('#conn').classList.add('hidden');
+      render();
+      schedule();
+    } catch (e) {
+      setStatus('err', 'Нет связи с таблицей');
+      $('#c-err').textContent = e.message || 'Не удалось получить данные. Проверьте интернет, адрес /exec и что веб-приложение развёрнуто с доступом «Все».';
+      if (!first) schedule();
+    }
+  }
+  function schedule() {
+    clearTimeout(timer);
+    if ($('#auto').checked) timer = setTimeout(() => { if (document.visibilityState === 'visible') load(false); else schedule(); }, 15000);
+  }
+  $('#c-go').addEventListener('click', () => {
+    const u = $('#c-url').value.trim();
+    if (u) K.store.set('iit-url', u); else K.store.set('iit-url', '');
+    load(true);
+  });
+  $('#c-key').addEventListener('keydown', e => { if (e.key === 'Enter') $('#c-go').click(); });
+  $('#refresh').addEventListener('click', () => load(false));
+  $('#auto').addEventListener('change', schedule);
+  $('#logout').addEventListener('click', () => {
+    K.store.set('iit-key', '');
+    SS.set('iit-key', '');
+    clearTimeout(timer);
+    location.reload();
+  });
+  if ($('#c-key').value && url()) load(true);
+
+  // ---------- отображение ----------
+  const pctCls = p => (p >= 90 ? 'c90' : p >= 61 ? 'c61' : 'c0');
+  const fmtTime = d => (d ? d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+  const fmtDur = s => (s >= 60 ? Math.floor(s / 60) + ' мин ' + (s % 60) + ' с' : s + ' с');
+  const byRu = (a, b) => String(a).localeCompare(String(b), 'ru');
+  const who = r => r.group + '\u0001' + r.fio;
+
+  function fill(sel, values, current, all) {
+    const el = $(sel);
+    el.innerHTML = '<option value="">' + all + '</option>' + values.map(v => '<option value="' + esc(v.v) + '"' + (v.v === current ? ' selected' : '') + '>' + esc(v.t) + '</option>').join('');
+  }
+  function filtered(ignoreTrainer) {
+    const g = $('#f-gr').value, r = $('#f-room').value, t = $('#f-tr').value;
+    return rows().filter(x => (!g || x.group === g) && (!r || x.room === r) && (ignoreTrainer || !t || x.trainer === t));
+  }
+  function best(list) {      // лучшая попытка каждого студента в каждом тренажёре
+    const m = {};
+    list.forEach(r => {
+      const k = who(r) + '\u0001' + r.trainer;
+      if (!m[k] || r.pct > m[k].pct || (r.pct === m[k].pct && r.seconds < m[k].seconds)) m[k] = r;
+    });
+    return Object.keys(m).map(k => m[k]);
+  }
+
+  function render() {
+    const all = rows();
+    $('#res').classList.toggle('hidden', !all.length && !serverRows.length && !seen);
+    const gs = [...new Set(all.map(r => r.group))].sort(byRu);
+    const rs = [...new Set(all.map(r => r.room))];
+    const roomInfo = {};
+    all.forEach(r => { const x = roomInfo[r.room] || (roomInfo[r.room] = { t: r.time, title: r.title }); if (r.time && (!x.t || r.time < x.t)) x.t = r.time; });
+    rs.sort((a, b) => (roomInfo[b].t || 0) - (roomInfo[a].t || 0));
+    if (filterRoom && !rs.includes(filterRoom)) rs.unshift(filterRoom);
+    fill('#f-gr', gs.map(g => ({ v: g, t: g })), $('#f-gr').value, 'все');
+    fill('#f-room', rs.map(r => ({ v: r, t: r + (roomInfo[r] ? ' · ' + (K.TRAINERS[r[0]] || {}).short + ' · ' + fmtTime(roomInfo[r].t) : ' · пока пусто') })), filterRoom || $('#f-room').value, 'все');
+    filterRoom = '';
+    fill('#f-tr', K.ORDER.map(l => ({ v: l, t: K.TRAINERS[l].title })), $('#f-tr').value, 'все');
+
+    const list = filtered(false);
+    const b = best(list);
+    const students = new Set(list.map(who)).size;
+    const avg = b.length ? Math.round(b.reduce((s, r) => s + r.pct, 0) / b.length) : 0;
+    $('#stats').innerHTML =
+      '<div><span>Попыток</span><b>' + list.length + '</b></div>' +
+      '<div><span>Студентов</span><b>' + students + '</b></div>' +
+      '<div><span>Средний % (лучшие)</span><b>' + (b.length ? avg + ' %' : '—') + '</b></div>' +
+      '<div><span>Зачтено (≥ 61 %)</span><b>' + b.filter(r => r.pct >= 61).length + ' из ' + b.length + '</b></div>' +
+      (maxAttempts !== null ? '<div><span>Попыток на студента</span><b>' + (maxAttempts ? maxAttempts : '∞') + '</b></div>' : '') +
+      (list.some(r => !r.valid) ? '<div><span>Не прошли проверку</span><b class="badc">' + list.filter(r => !r.valid).length + '</b></div>' : '');
+    document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', String(x.dataset.tab === tab)));
+    const v = $('#view');
+    if (!list.length) { v.innerHTML = '<p class="empty">' + (all.length ? 'Под выбранные фильтры результатов нет.' : 'Результатов пока нет. Как только студент закончит зачётный проход, он появится здесь.') + '</p>'; return; }
+    v.innerHTML = tab === 'journal' ? viewJournal() : tab === 'rooms' ? viewRooms(list) : tab === 'all' ? viewAll(list) : viewHard(list);
+  }
+
+  function viewJournal() {
+    const list = filtered(true);
+    const t = $('#f-tr').value;
+    const cols = t ? [t] : K.ORDER.filter(l => list.some(r => r.trainer === l));
+    const groups = [...new Set(list.map(r => r.group))].sort(byRu);
+    return groups.map(g => {
+      const gl = list.filter(r => r.group === g);
+      const people = [...new Set(gl.map(r => r.fio))].sort(byRu);
+      const b = best(gl);
+      const cell = (fio, l) => {
+        const x = b.find(r => r.fio === fio && r.trainer === l);
+        if (!x) return '<td class="num">—</td>';
+        const n = gl.filter(r => r.fio === fio && r.trainer === l).length;
+        return '<td class="num ' + pctCls(x.pct) + '" title="' + esc(x.score + ' из ' + x.total + ', попыток: ' + n) + '">' + x.pct + '</td>';
+      };
+      const passed = b.filter(r => r.pct >= 61).length;
+      return '<div class="grp"><b>' + esc(g) + '</b><span>студентов: ' + people.length + '</span><span>зачтено тренажёров: ' + passed + ' из ' + b.length + '</span></div>' +
+        '<div class="tablewrap"><table class="rt"><thead><tr><th>ФИО</th>' + cols.map(l => '<th class="num" title="' + esc(K.TRAINERS[l].title) + '">' + esc(K.TRAINERS[l].short) + '</th>').join('') +
+        '<th class="num">Попыток</th></tr></thead><tbody>' +
+        people.map(f => '<tr' + (gl.some(r => r.fio === f && r.fresh) ? ' class="fresh"' : '') + '><td>' + esc(f) + '</td>' + cols.map(l => cell(f, l)).join('') +
+          '<td class="num">' + gl.filter(r => r.fio === f).length + '</td></tr>').join('') +
+        '</tbody></table></div>';
+    }).join('');
+  }
+
+  function viewRooms(list) {
+    const rooms = [...new Set(list.map(r => r.room))];
+    const first = rm => Math.min(...list.filter(r => r.room === rm).map(r => (r.time ? r.time.getTime() : Infinity)));
+    rooms.sort((a, b) => first(b) - first(a));
+    return rooms.map((rm, i) => {
+      const rl = list.filter(r => r.room === rm);
+      const b = best(rl).sort((x, y) => byRu(x.group, y.group) || byRu(x.fio, y.fio));
+      const avg = Math.round(b.reduce((s, r) => s + r.pct, 0) / b.length);
+      const groups = [...new Set(rl.map(r => r.group))].sort(byRu).join(', ');
+      return '<details class="room"' + (i === 0 ? ' open' : '') + '><summary><b>' + esc(rm) + '</b><span>' + esc(rl[0].title) + '</span><span>' +
+        esc(fmtTime(isFinite(first(rm)) ? new Date(first(rm)) : null)) + '</span><span>' + esc(groups) + '</span><span>студентов: ' + b.length +
+        '</span><span>средний: ' + avg + ' %</span><span>зачтено: ' + b.filter(r => r.pct >= 61).length + '</span></summary>' +
+        '<div class="tablewrap"><table class="rt"><thead><tr><th>Группа</th><th>ФИО</th><th class="num">Баллы</th><th class="num">%</th><th class="num">Время</th><th>Ошибки</th><th class="num">Попыток</th><th class="num">Проверка</th></tr></thead><tbody>' +
+        b.map(r => '<tr' + (r.fresh ? ' class="fresh"' : '') + '><td>' + esc(r.group) + '</td><td>' + esc(r.fio) + '</td><td class="num">' + r.score + ' / ' + r.total +
+          '</td><td class="num ' + pctCls(r.pct) + '">' + r.pct + '</td><td class="num">' + fmtDur(r.seconds) + '</td><td>' + esc(r.mistakes) +
+          '</td><td class="num">' + rl.filter(x => who(x) === who(r)).length + '</td><td class="num">' + (r.valid ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>') + '</td></tr>').join('') +
+        '</tbody></table></div></details>';
+    }).join('');
+  }
+
+  function viewAll(list) {
+    const l = list.slice().sort((a, b) => (b.time || 0) - (a.time || 0));
+    return '<div class="tablewrap"><table class="rt"><thead><tr><th>Получено</th><th>Группа</th><th>ФИО</th><th>Комната</th><th>Тренажёр</th><th class="num">Баллы</th><th class="num">%</th><th class="num">Время</th><th>Ошибки</th><th class="num">Проверка</th></tr></thead><tbody>' +
+      l.map(r => '<tr' + (r.fresh ? ' class="fresh"' : '') + '><td>' + esc(fmtTime(r.time)) + '</td><td>' + esc(r.group) + '</td><td>' + esc(r.fio) +
+        '</td><td>' + esc(r.room) + '</td><td>' + esc((K.TRAINERS[r.trainer] || {}).short || r.trainer) + '</td><td class="num">' + r.score + ' / ' + r.total +
+        '</td><td class="num ' + pctCls(r.pct) + '">' + r.pct + '</td><td class="num">' + fmtDur(r.seconds) + '</td><td>' + esc(r.mistakes) +
+        '</td><td class="num">' + (r.valid ? '<span class="okc">✓</span>' : '<span class="badc">✗</span>') + '</td></tr>').join('') +
+      '</tbody></table></div>';
+  }
+
+  function viewHard(list) {
+    const cnt = {}, tries = {};
+    list.forEach(r => {
+      tries[r.trainer] = (tries[r.trainer] || 0) + 1;
+      if (r.mistakes && r.mistakes !== 'нет') r.mistakes.split(/[;,]\s*/).filter(Boolean).forEach(id => {
+        const k = r.trainer + '|' + id.trim();
+        cnt[k] = (cnt[k] || 0) + 1;
+      });
+    });
+    const top = Object.keys(cnt).map(k => {
+      const [t, id] = k.split('|');
+      return { t, id, n: cnt[k], share: cnt[k] / tries[t] };
+    }).sort((a, b) => b.share - a.share || b.n - a.n).slice(0, 20);
+    if (!top.length) return '<p class="empty">Ошибок нет — или результатов пока мало.</p>';
+    return '<p class="hint">Задания, в которых ошибаются чаще всего (доля попыток с ошибкой). В итоговом зачёте у каждого студента свой набор, поэтому доля для него ориентировочная.</p>' +
+      '<div class="tablewrap"><table class="rt"><thead><tr><th>№</th><th>Задание</th><th class="num">Ошибок</th><th>Доля</th><th>Раздел</th></tr></thead><tbody>' +
+      top.map(x => {
+        const it = bank && bank[x.id];
+        return '<tr><td>' + esc(x.id) + '</td><td>' + esc(it ? it.q : bank ? 'задание не найдено' : 'загружаем текст…') + (it ? '<br><span class="hint">Ответ: ' + esc(it.answer) + '</span>' : '') +
+          '</td><td class="num">' + x.n + '</td><td><div class="bar"><i style="width:' + Math.round(x.share * 100) + '%"></i></div><span class="hint">' + Math.round(x.share * 100) + ' %</span></td><td>' + esc(it ? it.ref : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
+  ['#f-gr', '#f-room', '#f-tr'].forEach(s => $(s).addEventListener('change', render));
+
+  // ---------- CSV для Excel: точка с запятой и BOM ----------
+  function download(name, table) {
+    const csv = '﻿' + table.map(r => r.map(x => {
+      const s = String(x == null ? '' : x);
+      return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(';')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  const stamp = () => new Date().toISOString().slice(0, 10);
+  $('#csv-j').addEventListener('click', () => {
+    const list = filtered(true), b = best(list);
+    const people = [...new Set(list.map(who))].sort(byRu);
+    const head = ['Группа', 'ФИО'].concat(K.ORDER.map(l => K.TRAINERS[l].title));
+    download('журнал-ИИТ-' + stamp() + '.csv', [head].concat(people.map(p => {
+      const [g, f] = p.split('\u0001');
+      return [g, f].concat(K.ORDER.map(l => { const x = b.find(r => who(r) === p && r.trainer === l); return x ? x.pct : ''; }));
+    })));
+  });
+  $('#csv-a').addEventListener('click', () => {
+    const list = filtered(false).slice().sort((a, b) => (a.time || 0) - (b.time || 0));
+    download('попытки-ИИТ-' + stamp() + '.csv', [['Получено', 'Группа', 'ФИО', 'Комната', 'Тренажёр', 'Баллы', 'Всего', 'Процент', 'Длительность, с', 'Ошибки', 'Проверка']]
+      .concat(list.map(r => [r.time ? r.time.toLocaleString('ru-RU') : '', r.group, r.fio, r.room, r.title, r.score, r.total, r.pct, r.seconds, r.mistakes, r.valid ? 'да' : 'нет'])));
+  });
+
+  // =============== 3. настройка ===============
+  $('#cfg-status').innerHTML = CFG.resultsUrl
+    ? '<span class="okc">Адрес таблицы указан в config.js.</span> Нажмите «Проверить связь», чтобы убедиться, что сервер и банк заданий на месте.'
+    : '<span class="badc">Адрес таблицы ещё не указан в config.js.</span> Пока зачётный режим не работает — студентам доступна только самопроверка.';
+  if (!CFG.resultsUrl) $('#setup').open = true;
+  $('#copy-gs').addEventListener('click', async e => {
+    try {
+      const t = await (await fetch('apps-script/Code.gs?_=' + Date.now())).text();
+      K.copy(t, e.target);
+    } catch (err) { window.open('apps-script/Code.gs', '_blank'); }
+  });
+  $('#ping').addEventListener('click', async () => {
+    const u = String($('#c-url').value.trim() || url());
+    const m = $('#ping-msg');
+    if (!u) { m.textContent = 'Адрес не задан: укажите его в config.js или в поле «Другой адрес таблицы» (раздел 2).'; return; }
+    m.textContent = 'Проверяем…';
+    try {
+      const j = await (await fetch(u + (u.includes('?') ? '&' : '?') + 'action=ping&_=' + Date.now())).json();
+      m.innerHTML = !(j.ok && j.app === 'iit-trainers') ? 'Ответ получен, но это не скрипт тренажёров.'
+        : !j.v ? '<span class="badc">Связь есть, но в Apps Script старая версия кода.</span> Вставьте новый код сервера и файл Bank, создайте новую версию развёртывания.'
+        : !j.bank ? '<span class="badc">Связь есть, но в проекте нет файла Bank с заданиями.</span> Добавьте его (шаг 3) и создайте новую версию развёртывания.'
+        : !j.keySet ? '<span class="badc">Связь есть, но в скрипте не заменён TEACHER_KEY.</span>'
+        : '<span class="okc">Связь есть: сервер, банк заданий и пароль на месте.</span>';
+    } catch (err) {
+      m.innerHTML = '<span class="badc">Связи нет.</span> Проверьте, что адрес заканчивается на /exec, а развёртывание доступно «Всем».';
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тренажёр ИИТ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="iit.css?v=20261115b">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><a href="index.html">← Все тренажёры</a><button class="theme-btn" type="button">Светлая тема</button></div>
+  <header>
+    <p class="kicker" id="h-kicker"></p>
+    <h1 id="h-title"></h1>
+    <p class="sub" id="h-sub"></p>
+  </header>
+
+  <div class="layout">
+    <main class="card" id="quiz"></main>
+    <aside class="panel" id="sheet"></aside>
+  </div>
+</div>
+
+<script>document.write('<script src="config.js?t=' + Date.now() + '"><\/script>');</script>
+<script src="iit.js?v=20261115b"></script>
+<script src="iit-data.js?v=20261115b"></script>
+<script>
+(function () {
+  'use strict';
+  const K = window.Kurs, esc = K.esc, $ = K.$;
+  K.initTheme();
+  const p = new URLSearchParams(location.search);
+  let letter = String(p.get('t') || '').toUpperCase();
+  const room = K.parseRoom(p.get('room') || '');
+  if (room.ok) letter = room.letter;          // ссылка из QR-кода: тренажёр определяется по коду комнаты
+  if (!K.TRAINERS[letter]) { location.replace('index.html'); return; }
+  const T = K.TRAINERS[letter];
+
+  if (letter === 'Z') {
+    document.title = 'Итоговый зачёт · ИИТ';
+    $('#h-kicker').textContent = 'Все лекции курса';
+    $('#h-title').textContent = 'Итоговый зачёт';
+    $('#h-sub').textContent = '24 задания — по 3 из каждой лекции, у каждого студента свой случайный набор. В зачётном проходе правильные ответы не показываются.';
+    $('#sheet').innerHTML = '<h2>Темы зачёта</h2><ol>' +
+      K.LECTURES.map(l => '<li><a href="' + K.trainerUrl(l.letter) + '">' + esc(l.title) + '</a></li>').join('') + '</ol>' +
+      '<p class="hint">Перед зачётом пройдите самопроверку по лекциям, где ошибок больше всего.</p>';
+  } else {
+    const L = T.lecture;
+    document.title = 'Лекция ' + L.n + '. ' + L.title + ' · ИИТ';
+    $('#h-kicker').textContent = 'Лекция ' + L.n + ' · ' + L.full;
+    $('#h-title').textContent = L.title;
+    $('#h-sub').textContent = 'Задания по лекции ' + L.n + ': выбор варианта, расчёт и порядок шагов. В самопроверке — разбор после каждого ответа.';
+    $('#sheet').innerHTML = '<h2>Шпаргалка по лекции ' + L.n + '</h2>' + K.INFO[L.n].sheet;
+  }
+  K.trainer(letter, $('#quiz'));
+})();
+</script>
+</body>
+</html>
